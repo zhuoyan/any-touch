@@ -1,4 +1,4 @@
-import { Input} from '@any-touch/shared';
+import { Input, Computed } from '@any-touch/shared';
 import {
     STATUS_POSSIBLE, RecognizerStatus
 } from '@any-touch/shared';
@@ -45,6 +45,8 @@ export default abstract class {
     // 当前输入
     input?: Input;
 
+    computeFunctions:any[] = [];
+
     constructor(options: { name: string, [k: string]: any }) {
         this.options = options;
         this.name = this.options.name;
@@ -62,11 +64,12 @@ export default abstract class {
     };
 
     /**
-     * 验证触点
+     * 验证触点数量
      * @param pointLength 触点数
      */
     isValidPointLength(pointLength: number): boolean {
-        return 0 === this.options.pointLength || this.options.pointLength === pointLength;
+        return this.options.pointLength === pointLength;
+        // return 0 === this.options.pointLength || this.options.pointLength === pointLength;
     };
 
     /**
@@ -100,9 +103,9 @@ export default abstract class {
     /**
      * 适用于大部分移动类型的手势, 
      * 如pan/rotate/pinch/swipe
-     * @param {Input} 输入记录 
+     * @param computed 计算值 
      */
-    abstract recognize(Input: Input, callback: (type: string, ...payload: any[]) => void): void;
+    abstract recognize(computed: Computed, callback: (type: string, ...payload: any[]) => void): void;
 
 
     /**

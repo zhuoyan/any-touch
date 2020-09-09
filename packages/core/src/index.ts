@@ -5,6 +5,8 @@
  * https://segmentfault.com/a/1190000010511484#articleHeader0
  * https://segmentfault.com/a/1190000007448808#articleHeader1
  * hammer.js http://hammerjs.github.io/
+ * ==================== 流程 ====================
+ * Event(Mouse|Touch) => BaseInput => Input => Computed => AnyTouchEvent
  */
 import AnyEvent from 'any-event';
 import type { Listener } from 'any-event';
@@ -45,6 +47,7 @@ export default class AnyTouch extends AnyEvent<AnyTouchEvent> {
     static version = '__VERSION__';
     static recognizers: Recognizer[] = [];
     static recognizerMap: Record<string, Recognizer> = {};
+    static computeFunctionMap: Record<string, Recognizer> = {};
     /**
      * 安装插件
      * @param {AnyTouchPlugin} 插件
@@ -59,7 +62,7 @@ export default class AnyTouch extends AnyEvent<AnyTouchEvent> {
     static removeUse = (recognizerName?: string): void => {
         removeUse(AnyTouch, recognizerName);
     };
-
+    computeFunctionMap: Record<string, Recognizer> = {};
     // 目标元素
     el?: HTMLElement;
     // 选项
@@ -75,8 +78,12 @@ export default class AnyTouch extends AnyEvent<AnyTouchEvent> {
      */
     constructor(el?: HTMLElement, options?: Options) {
         super();
+
         this.el = el;
         this.options = { ...DEFAULT_OPTIONS, ...options };
+
+        // 同步初始化前加载的"计算函数"
+        this.computeFunctionMap = AnyTouch.computeFunctionMap;
 
         // 同步到插件到实例
         this.recognizerMap = AnyTouch.recognizerMap;
@@ -188,20 +195,26 @@ export default class AnyTouch extends AnyEvent<AnyTouchEvent> {
                     dispatchDomEvent(target, { ...input, type: AT_WITH_STATUS }, domEvents);
                 }
             }
+
+            // input -> computed
+            let computed = Object.create(null);
+            for (const k in this.computeFunctionMap) {
+                const f = this.computeFunctionMap[k] as any;
+                computed = { ...computed, ...f(input) }
+                // console.log(c)
+            }
+
             // 缓存每次计算的结果
             // 以函数名为键值
-            let cacheComputedGroup = Object.create(null);
             for (const recognizer of this.recognizers) {
                 if (recognizer.disabled) continue;
                 // 恢复上次的缓存
-                recognizer.computedGroup = cacheComputedGroup;
-                recognizer.computeFunctionMap = this.cacheComputedFunctionGroup;
-                recognizer.recognize(input, (type, e) => {
-                    // 此时的ev就是this.computed
+                recognizer.recognize({ ...input, ...computed }, (type, e) => {
+                    // 此时的e就是this.computed
                     const payload = { ...input, ...e, type, baseType: recognizer.name };
 
                     // 防止数据被vue类框架拦截
-                    Object.freeze(payload);
+                    Object?.freeze(payload);
 
                     if (void 0 === this.beforeEachHook) {
                         emit2(this, payload);
@@ -211,9 +224,6 @@ export default class AnyTouch extends AnyEvent<AnyTouchEvent> {
                         });
                     }
                 });
-                // 记录到缓存
-                cacheComputedGroup = recognizer.computedGroup;
-                this.cacheComputedFunctionGroup = recognizer.computeFunctionMap;
             }
         }
     };

@@ -97,7 +97,7 @@ export type Vector = Point;
 /**
  * Input执行计算后的数据格式
  */
-export interface Computed {
+export interface Computed  extends Input{
     // 一次识别周期中出现的最大触点数
     maxPointLength?: number;
     velocityX: number;

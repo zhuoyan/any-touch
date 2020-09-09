@@ -4,36 +4,46 @@ type C = typeof AnyTouch;
 type I = InstanceType<C>;
 /**
  * 触发dom事件
- * @param {C|I} AnyTouch对象或实例
- * @param {Recognizer} 识别器
- * @param {Object} 识别器参数
+ * @param atOrAT AnyTouch对象或实例
+ * @param Recognizer 识别器
+ * @param options 识别器参数
  */
-export function use(instanceOrClass: C | I, Recognizer: new (...args: any) => Recognizer, options?: Record<string,any>): void {
+export function use(atOrAT: C | I, Recognizer: new (...args: any) => Recognizer, options?: Record<string, any>): void {
     const name = options?.name;
     // 保证同一个事件只对应一个识别器
-    if (void 0 !== name && void 0 !== instanceOrClass.recognizerMap[name]) return;
+    if (void 0 !== name && void 0 !== atOrAT.recognizerMap[name]) return;
     const instance = new Recognizer(options);
-    instanceOrClass.recognizerMap[instance.name] = instance;
-    instance.recognizerMap = instanceOrClass.recognizerMap;
-    instanceOrClass.recognizers.push(instanceOrClass.recognizerMap[instance.name]);
+
+    // 初始化计算函数
+    for (const createComputeFunction of instance.computeFunctions) {
+        const { _id } = createComputeFunction;
+        if (void 0 === atOrAT.computeFunctionMap[_id]) {
+            // 创建计算函数
+            atOrAT.computeFunctionMap[_id] = createComputeFunction();
+        }
+    }
+    // console.log(atOrAT.computeFunctionMap)
+    atOrAT.recognizerMap[instance.name] = instance;
+    instance.recognizerMap = atOrAT.recognizerMap;
+    atOrAT.recognizers.push(atOrAT.recognizerMap[instance.name]);
 };
 
 /**
  * 删除识别器
- * @param {C|I} AnyTouch对象或实例
- * @param {String} [手势名] 
+ * @param atOrAT AnyTouch对象或实例
+ * @param recognizerName 手势名
  */
-export function removeUse(instanceOrClass: C | I, recognizerName?: string): void {
+export function removeUse(atOrAT: C | I, recognizerName?: string): void {
     // 如果没有传入指定手势名称
     // 那么删除所有手势识别器
     if (void 0 === recognizerName) {
-        instanceOrClass.recognizers = [];
-        instanceOrClass.recognizerMap = {};
+        atOrAT.recognizers = [];
+        atOrAT.recognizerMap = {};
     } else {
-        for (const [index, recognizer] of instanceOrClass.recognizers.entries()) {
+        for (const [index, recognizer] of atOrAT.recognizers.entries()) {
             if (recognizerName === recognizer.options.name) {
-                instanceOrClass.recognizers.splice(index, 1);
-                delete instanceOrClass.recognizerMap[recognizerName];
+                atOrAT.recognizers.splice(index, 1);
+                delete atOrAT.recognizerMap[recognizerName];
                 break;
             }
         }
